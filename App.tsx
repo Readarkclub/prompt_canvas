@@ -73,7 +73,11 @@ const Sidebar = ({ user, onLogout, onCloseMobile }: { user: User, onLogout: () =
 const SettingsPage = ({ user }: { user: User }) => {
   const [jsonOutput, setJsonOutput] = useState('');
   const [importStatus, setImportStatus] = useState('');
-  const apiKeyInfo = getApiKeyInfo();
+  const [apiKeyInfo, setApiKeyInfo] = useState<any>({ status: 'loading', length: 0, preview: '...' });
+
+  useEffect(() => {
+    getApiKeyInfo().then(setApiKeyInfo);
+  }, []);
 
   const handleExport = async () => {
     try {
@@ -142,7 +146,7 @@ const SettingsPage = ({ user }: { user: User }) => {
               </div>
           </div>
           <div className="mt-3 text-xs text-slate-500">
-             提示：如果状态显示异常，请检查 Cloud Run 环境变量配置。Key 应以 "AIza" 开头，且不包含引号。
+             提示：如果状态显示异常，请检查 EdgeOne 环境变量配置。Key 应以 "AIza" 开头，且不包含引号。
           </div>
       </div>
 

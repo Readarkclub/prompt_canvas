@@ -1,75 +1,46 @@
-import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { PromptType, Attachment } from "../types";
 
-// Sanitize API Key: remove whitespace and quotes that might be injected by build tools/env files
-const rawApiKey = process.env.API_KEY || '';
-const API_KEY = rawApiKey.replace(/["']/g, '').trim();
-
-const ai = new GoogleGenAI({ apiKey: API_KEY });
-
-// Helper to ensure we don't call API without key
-const checkApiKey = () => {
-  if (!API_KEY) throw new Error("API Key is missing. Please check your environment variables.");
-};
+const API_BASE = '/api/gemini';
 
 /**
- * Diagnostic helper to check API Key status safely in UI
+ * Diagnostic helper to check API Key status from Edge Function
  */
-export const getApiKeyInfo = () => {
-  if (!API_KEY) return { status: 'missing', length: 0, preview: 'N/A' };
-  
-  const isValidFormat = API_KEY.startsWith('AIza');
-  const hasWhitespace = /\s/.test(API_KEY);
-  
-  return {
-    status: isValidFormat && !hasWhitespace ? 'valid_format' : 'invalid_format',
-    length: API_KEY.length,
-    preview: `${API_KEY.substring(0, 4)}...${API_KEY.substring(API_KEY.length - 4)}`,
-    hasWhitespace
-  };
+export const getApiKeyInfo = async () => {
+  try {
+    const response = await fetch(`${API_BASE}/health`);
+    if (!response.ok) {
+      throw new Error('Health check failed');
+    }
+    return await response.json();
+  } catch (e) {
+    return {
+      status: 'error',
+      length: 0,
+      preview: 'N/A',
+      message: 'Unable to connect to API'
+    };
+  }
 };
 
 /**
  * Auto-categorize the user's input to decide if it's a visual prompt or a text/reasoning task.
- * Wrapped in try/catch to prevent blocking UI if API fails.
  */
 export const classifyPrompt = async (input: string): Promise<{ type: PromptType, title: string, tags: string[] }> => {
   try {
-    checkApiKey();
-    
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: `Analyze the following user prompt: "${input}". 
-      
-      Your task is to classify this prompt into one of two types: IMAGE or TEXT.
-  
-      CRITICAL RULES:
-      1. Set type to "TEXT" if:
-         - The prompt is a system instruction, role definition (e.g., "You are an expert...", "Act as a director...", "你是一位...").
-         - The prompt asks to *write* or *refine* a prompt (e.g., "Write a prompt for Sora", "Create a JSON template").
-         - The prompt is conversational, a question, or a request for code/reasoning.
-      
-      2. Set type to "IMAGE" ONLY if:
-         - The prompt is a direct visual description of a scene intended to be rendered immediately as a picture (e.g., "A stunning photo of...", "Cyberpunk city street", "一只猫...").
-      
-      Also provide a short title (max 5 words) and 3 relevant tags. If the input is Chinese, please provide the title and tags in Chinese.`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            type: { type: Type.STRING, enum: ["IMAGE", "TEXT"] },
-            title: { type: Type.STRING },
-            tags: { type: Type.ARRAY, items: { type: Type.STRING } }
-          }
-        }
-      }
+    const response = await fetch(`${API_BASE}/classify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ input }),
     });
-  
-    const jsonText = response.text;
-    if (!jsonText) throw new Error("Empty response");
-    
-    const result = JSON.parse(jsonText);
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Classification failed');
+    }
+
+    const result = await response.json();
     return {
       type: result.type === "IMAGE" ? PromptType.IMAGE : PromptType.TEXT,
       title: result.title || input.slice(0, 10),
@@ -77,89 +48,64 @@ export const classifyPrompt = async (input: string): Promise<{ type: PromptType,
     };
   } catch (e) {
     console.warn("Prompt classification failed, using default.", e);
-    // Fallback defaults so the user isn't blocked from creating a prompt
-    return { 
-      type: PromptType.TEXT, 
-      title: input.slice(0, 15) + (input.length > 15 ? "..." : ""), 
-      tags: ["新提示词"] 
+    return {
+      type: PromptType.TEXT,
+      title: input.slice(0, 15) + (input.length > 15 ? "..." : ""),
+      tags: ["新提示词"]
     };
   }
 };
 
 /**
  * Generate an image based on the prompt.
- * Model: Gemini 3 Pro Image Preview (gemini-3-pro-image-preview)
  * Supports optional reference image for image-to-image generation.
  */
 export const generateImage = async (prompt: string, referenceImageBase64?: string): Promise<string> => {
-  checkApiKey();
+  const response = await fetch(`${API_BASE}/generate-image`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      prompt,
+      referenceImage: referenceImageBase64,
+    }),
+  });
 
-  try {
-    const parts: any[] = [{ text: prompt }];
-    
-    if (referenceImageBase64) {
-        // Extract base64 data and mime type (e.g., "data:image/png;base64,.....")
-        const matches = referenceImageBase64.match(/^data:(.+);base64,(.+)$/);
-        if (matches) {
-            parts.push({
-                inlineData: {
-                    mimeType: matches[1],
-                    data: matches[2]
-                }
-            });
-        }
-    }
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-image-preview',
-      contents: {
-        parts: parts,
-      },
-      config: {
-        imageConfig: {
-            aspectRatio: "1:1",
-            imageSize: "1K"
-        }
-      },
-    });
-
-    const outputParts = response.candidates?.[0]?.content?.parts || [];
-    for (const part of outputParts) {
-      if (part.inlineData) {
-        return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-      }
-    }
-
-    throw new Error("No image data returned from Gemini 3 Pro Image");
-  } catch (error) {
-    console.error("Gemini 3 Pro Image generation failed", error);
-    throw error;
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Image generation failed');
   }
+
+  const result = await response.json();
+  return result.imageUrl;
 };
 
 /**
  * Convert a standard image prompt into a detailed video generation prompt.
  */
 export const convertToVideoPrompt = async (
-  originalPrompt: string, 
+  originalPrompt: string,
   settings: any
 ): Promise<string> => {
-  checkApiKey();
-  
-  const context = JSON.stringify(settings);
-  const prompt = `Rewrite the following image prompt into a highly detailed video generation prompt suitable for a model like Sora or Grok.
-  Original Prompt: "${originalPrompt}"
-  
-  Apply these video settings: ${context}
-  
-  Include specific keywords for camera movement, lighting, and motion. Output ONLY the raw prompt text.`;
-
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents: prompt,
+  const response = await fetch(`${API_BASE}/video-prompt`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      prompt: originalPrompt,
+      settings,
+    }),
   });
 
-  return response.text || originalPrompt;
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Video prompt conversion failed');
+  }
+
+  const result = await response.json();
+  return result.videoPrompt;
 };
 
 /**
@@ -167,55 +113,23 @@ export const convertToVideoPrompt = async (
  * Supports optional attachments (images, docs, etc.) for multimodal chat.
  */
 export const sendChatMessage = async (history: any[], newMessage: string, attachments?: Attachment[]) => {
-  checkApiKey();
-  
-  // Construct chat history for SDK
-  // Map internal ChatMessage to SDK Content format
-  const sdkHistory = history.map(h => {
-    const parts: any[] = [{ text: h.text }];
-    
-    // Add attachments to history if present
-    if (h.attachments && h.attachments.length > 0) {
-        h.attachments.forEach((att: Attachment) => {
-            const matches = att.data.match(/^data:(.+);base64,(.+)$/);
-            if (matches) {
-                parts.push({
-                    inlineData: {
-                        mimeType: matches[1],
-                        data: matches[2]
-                    }
-                });
-            }
-        });
-    }
-    
-    return {
-      role: h.role,
-      parts: parts
-    };
+  const response = await fetch(`${API_BASE}/chat`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      history,
+      message: newMessage,
+      attachments,
+    }),
   });
 
-  const chat = ai.chats.create({
-    model: 'gemini-2.5-flash',
-    history: sdkHistory
-  });
-
-  // Construct current message parts
-  const messageParts: any[] = [{ text: newMessage }];
-  if (attachments && attachments.length > 0) {
-      attachments.forEach(att => {
-          const matches = att.data.match(/^data:(.+);base64,(.+)$/);
-          if (matches) {
-              messageParts.push({
-                  inlineData: {
-                      mimeType: matches[1],
-                      data: matches[2]
-                  }
-              });
-          }
-      });
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Chat request failed');
   }
 
-  const result = await chat.sendMessage({ message: messageParts });
+  const result = await response.json();
   return result.text;
 };

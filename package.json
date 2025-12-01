@@ -6,13 +6,14 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "pages:dev": "edgeone pages dev",
+    "pages:deploy": "edgeone pages deploy"
   },
   "dependencies": {
     "react-dom": "^19.2.0",
     "react": "^19.2.0",
     "lucide-react": "^0.554.0",
-    "@google/genai": "^1.30.0",
     "react-router-dom": "^7.9.6"
   },
   "devDependencies": {
