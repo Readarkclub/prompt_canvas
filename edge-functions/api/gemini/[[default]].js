@@ -81,7 +81,7 @@ async function handleClassify(requestBody, apiKey) {
   Respond in JSON format: {"type": "IMAGE" or "TEXT", "title": "...", "tags": ["...", "...", "..."]}`;
 
   try {
-    const result = await callGeminiAPI('/models/gemini-2.5-flash:generateContent', apiKey, {
+    const result = await callGeminiAPI('/models/gemini-3-pro-preview:generateContent', apiKey, {
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: {
         responseMimeType: 'application/json',
@@ -133,7 +133,7 @@ async function handleGenerateImage(requestBody, apiKey) {
   }
 
   try {
-    const result = await callGeminiAPI('/models/gemini-2.0-flash-exp-image-generation:generateContent', apiKey, {
+    const result = await callGeminiAPI('/models/gemini-3-pro-image-preview:generateContent', apiKey, {
       contents: [{ parts }],
       generationConfig: {
         responseModalities: ['image', 'text'],
@@ -210,7 +210,7 @@ async function handleChat(requestBody, apiKey) {
   contents.push({ role: 'user', parts: currentParts });
 
   try {
-    const result = await callGeminiAPI('/models/gemini-2.5-flash:generateContent', apiKey, {
+    const result = await callGeminiAPI('/models/gemini-3-pro-preview:generateContent', apiKey, {
       contents,
     });
 
@@ -238,7 +238,7 @@ Apply these video settings: ${settingsJson}
 Include specific keywords for camera movement, lighting, and motion. Output ONLY the raw prompt text.`;
 
   try {
-    const result = await callGeminiAPI('/models/gemini-2.5-flash:generateContent', apiKey, {
+    const result = await callGeminiAPI('/models/gemini-3-pro-preview:generateContent', apiKey, {
       contents: [{ parts: [{ text: systemPrompt }] }],
     });
 

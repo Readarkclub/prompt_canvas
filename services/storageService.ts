@@ -1,5 +1,6 @@
 
 import { User, PromptItem } from '../types';
+import { generateId } from './idService';
 
 const DB_NAME = 'PromptCanvasDB';
 const DB_VERSION = 1;
@@ -102,7 +103,7 @@ export const registerUser = async (username: string, password?: string): Promise
   }
 
   const newUser: StoredUser = {
-    id: crypto.randomUUID(),
+    id: generateId(),
     username,
     createdAt: Date.now(),
     password

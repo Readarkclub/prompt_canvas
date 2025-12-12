@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:pages.edgeone.ai)",
+      "WebSearch",
+      "WebFetch(domain:edgeone.cloud.tencent.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(npm run build:*)",
+      "Bash(npm install)",
+      "Bash(npm install:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm run pages:dev:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nfeat: Add EdgeOne Edge Functions for Gemini API gateway\n\n- Add edge-functions/api/gemini for all Gemini API calls\n- Refactor geminiService.ts to call /api/gemini/* endpoints\n- Add .env.example for environment configuration\n- Update vite.config.ts with EdgeOne Pages settings\n- Add CLAUDE.md project documentation\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git push:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

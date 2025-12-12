@@ -4,6 +4,7 @@ import { Icons } from './components/Icons';
 import { User, PromptItem, PromptType } from './types';
 import { loginUser, registerUser, logoutUser, getSessionUser, getPrompts, savePrompt, deletePrompt, exportDatabase, importDatabase } from './services/storageService';
 import { classifyPrompt, getApiKeyInfo } from './services/geminiService';
+import { generateId } from './services/idService';
 import { ImageCanvas } from './components/ImageCanvas';
 import { ChatInterface } from './components/ChatInterface';
 
@@ -353,11 +354,11 @@ const Dashboard = ({ user }: { user: User }) => {
     try {
       const classification = await classifyPrompt(input);
       
-      const newPrompt: PromptItem = {
-        id: crypto.randomUUID(),
-        userId: user.id,
-        title: classification.title,
-        type: classification.type,
+	      const newPrompt: PromptItem = {
+	        id: generateId(),
+	        userId: user.id,
+	        title: classification.title,
+	        type: classification.type,
         tags: classification.tags,
         createdAt: Date.now(),
         updatedAt: Date.now(),

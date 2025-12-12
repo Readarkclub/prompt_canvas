@@ -5,6 +5,7 @@ import { DiffViewer } from './DiffViewer';
 import { VideoModal } from './VideoModal';
 import { generateImage, convertToVideoPrompt } from '../services/geminiService';
 import { savePrompt } from '../services/storageService';
+import { generateId } from '../services/idService';
 
 interface ImageCanvasProps {
   promptItem: PromptItem;
@@ -83,11 +84,11 @@ export const ImageCanvas: React.FC<ImageCanvasProps> = ({ promptItem, onUpdate }
       const startX = lastVersion?.x !== undefined ? lastVersion.x + 50 : (-view.x / view.scale) + 100;
       const startY = lastVersion?.y !== undefined ? lastVersion.y + 50 : (-view.y / view.scale) + 400;
 
-      const newVersion: PromptVersion = {
-        id: crypto.randomUUID(),
-        text: textToUse,
-        timestamp: Date.now(),
-        imageUrl: imageUrl,
+	      const newVersion: PromptVersion = {
+	        id: generateId(),
+	        text: textToUse,
+	        timestamp: Date.now(),
+	        imageUrl: imageUrl,
         x: startX,
         y: startY
       };
@@ -192,11 +193,11 @@ export const ImageCanvas: React.FC<ImageCanvasProps> = ({ promptItem, onUpdate }
       const startX = lastVersion?.x !== undefined ? lastVersion.x + 50 : (-view.x / view.scale) + 100;
       const startY = lastVersion?.y !== undefined ? lastVersion.y + 50 : (-view.y / view.scale) + 400;
 
-      const newVersion: PromptVersion = {
-        id: crypto.randomUUID(),
-        text: videoPromptText,
-        timestamp: Date.now(),
-        videoSettings: settings,
+	      const newVersion: PromptVersion = {
+	        id: generateId(),
+	        text: videoPromptText,
+	        timestamp: Date.now(),
+	        videoSettings: settings,
         x: startX,
         y: startY
       };
