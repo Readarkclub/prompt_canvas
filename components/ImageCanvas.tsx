@@ -458,11 +458,31 @@ export const ImageCanvas: React.FC<ImageCanvasProps> = ({ promptItem, onUpdate }
     let startX = sorted[0]?.x || 0;
     let startY = sorted[0]?.y || 350; 
     
+    let currentAccumulatedY = startY;
+
     const updatedVersions = sorted.map((v, idx) => {
+        let newX, newY;
+
+        if (direction === 'horizontal') {
+            newX = startX + (idx * (CARD_WIDTH + CARD_GAP));
+            newY = startY;
+        } else {
+            // Vertical: use accumulated Y
+            newX = startX;
+            newY = currentAccumulatedY;
+            
+            // Get actual height from DOM
+            const cardEl = document.getElementById(`card-${v.id}`);
+            // Use offsetHeight if available, otherwise fallback to 600
+            const height = cardEl ? cardEl.offsetHeight : 600;
+            
+            currentAccumulatedY += height + CARD_GAP;
+        }
+
         return {
             ...v,
-            x: direction === 'horizontal' ? startX + (idx * (CARD_WIDTH + CARD_GAP)) : startX,
-            y: direction === 'horizontal' ? startY : startY + (idx * 600)
+            x: newX,
+            y: newY
         };
     });
 
@@ -711,6 +731,7 @@ export const ImageCanvas: React.FC<ImageCanvasProps> = ({ promptItem, onUpdate }
                 return (
                    <div 
                       key={version.id}
+                      id={`card-${version.id}`}
                       className="absolute flex flex-col transition-shadow duration-200"
                       style={{ 
                         left: x, 

@@ -28,4 +28,11 @@ dist-ssr
 .edgeone/*
 !.edgeone/project.json
 .tef_dist/*
-  
+
+# Trae/IDE
+.esdata
+
+# Vercel
+.vercel
+vercel.json
+.vercelignore
